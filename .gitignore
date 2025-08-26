@@ -1,0 +1,12 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Editor settings
+.vscode/
+
+# Virtual environment
+myenv/
+
+# SQLite database
+rentalSystem/db.sqlite3 
