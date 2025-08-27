@@ -142,3 +142,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
 }
+
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
