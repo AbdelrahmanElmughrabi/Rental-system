@@ -1,16 +1,28 @@
 from rest_framework import generics
 
 from core.pagination import DefaultPagination
-from inventory.models import Item
+from inventory.models import Item, Category
 from ..serializers.inventory import (
     ItemSerializer,
     ItemCreateSerializer,
     ItemUpdateSerializer,
+    CategorySerializer,
 )
 
 
+class CategoryListAPIView(generics.ListAPIView):
+    serializer_class = CategorySerializer
+    pagination_class = DefaultPagination
+
+    def get_queryset(self):
+        from inventory.selectors import list_categories
+        store = self.kwargs.get('store')
+        search = self.request.query_params.get('search')
+        return list_categories(store=store, search=search)
+
+
 class ItemListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Item.objects.all().order_by('-created_at')
+    serializer_class = ItemSerializer
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -20,16 +32,35 @@ class ItemListCreateAPIView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         from inventory.selectors import list_items
-
+        store = self.kwargs.get('store')
+        
         search = self.request.query_params.get('search')
-        is_active = self.request.query_params.get('is_active')
-        if is_active is not None:
-            is_active = is_active.lower() in ('1', 'true', 'yes')
-        return list_items(search=search, is_active=is_active)
+        is_rentable = self.request.query_params.get('is_rentable')
+        is_sellable = self.request.query_params.get('is_sellable')
+        status = self.request.query_params.get('status')
+        category = self.request.query_params.get('category')
+        
+        if is_rentable is not None:
+            is_rentable = is_rentable.lower() in ('1', 'true', 'yes')
+        if is_sellable is not None:
+            is_sellable = is_sellable.lower() in ('1', 'true', 'yes')
+        
+        return list_items(
+            store=store,
+            search=search, 
+            is_rentable=is_rentable, 
+            is_sellable=is_sellable, 
+            status=status, 
+            category=category
+        )
 
 
 class ItemDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Item.objects.all()
+    serializer_class = ItemSerializer
+
+    def get_queryset(self):
+        store = self.kwargs.get('store')
+        return Item.objects.filter(store=store)
 
     def get_serializer_class(self):
         if self.request.method in ('PUT', 'PATCH'):

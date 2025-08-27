@@ -12,7 +12,7 @@ from ..serializers.rentals import (
 
 
 class RentalListCreateAPIView(generics.ListCreateAPIView):
-    queryset = Rental.objects.all().order_by('-rented_at')
+    queryset = Rental.objects.all().order_by('-start_date')
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -32,7 +32,7 @@ class RentalListCreateAPIView(generics.ListCreateAPIView):
 
 
 class RentalDetailAPIView(generics.RetrieveAPIView):
-    queryset = Rental.objects.all().select_related('item')
+    queryset = Rental.objects.all().select_related('store')
     serializer_class = RentalSerializer
 
 
