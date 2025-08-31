@@ -4,6 +4,13 @@ from .models import Item, InventoryTransaction
 
 class InventoryService:
     """Business actions for inventory."""
+    
+    # Constants for transaction reasons
+    REASON_RENTAL = 'rental'
+    REASON_SALE = 'sale'
+    REASON_RETURN = 'return'
+    REASON_ADJUSTMENT = 'adjustment'
+    REASON_INITIAL = 'initial'
 
     @staticmethod
     def create_item(*, store, category=None, name: str, sku: str, price, description: str = "", 
@@ -45,7 +52,7 @@ class InventoryService:
     @transaction.atomic
     def adjust_stock(*, item: Item, delta: int, reason: str, actor=None):
         """
-        Adjust item stock and create transaction record.
+        Adjust item stock and create transaction record with row-level locking.
         
         Args:
             item: Item instance
@@ -56,17 +63,20 @@ class InventoryService:
         if reason not in dict(InventoryTransaction.REASON_CHOICES):
             raise ValueError(f"Invalid reason: {reason}")
         
+        # Lock the item row to prevent race conditions
+        locked_item = Item.objects.select_for_update().get(id=item.id)
+        
         # Check if reduction would result in negative stock
-        if delta < 0 and item.quantity + delta < 0:
-            raise ValueError(f"Insufficient stock. Current: {item.quantity}, requested reduction: {abs(delta)}")
+        if delta < 0 and locked_item.quantity + delta < 0:
+            raise ValueError(f"Insufficient stock. Current: {locked_item.quantity}, requested reduction: {abs(delta)}")
         
         # Update item quantity
-        item.quantity += delta
-        item.save(update_fields=['quantity', 'updated_at'])
+        locked_item.quantity += delta
+        locked_item.save(update_fields=['quantity', 'updated_at'])
         
         # Create transaction record
         transaction_record = InventoryTransaction.objects.create(
-            item=item,
+            item=locked_item,
             delta=delta,
             reason=reason,
             actor=actor

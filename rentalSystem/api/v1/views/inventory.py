@@ -1,6 +1,7 @@
 from rest_framework import generics
 
 from core.pagination import DefaultPagination
+from core.mixins import TenancyMixin, IsStoreMember
 from inventory.models import Item, Category
 from ..serializers.inventory import (
     ItemSerializer,
@@ -10,20 +11,22 @@ from ..serializers.inventory import (
 )
 
 
-class CategoryListAPIView(generics.ListAPIView):
+class CategoryListAPIView(TenancyMixin, generics.ListAPIView):
     serializer_class = CategorySerializer
     pagination_class = DefaultPagination
+    permission_classes = [IsStoreMember]
 
     def get_queryset(self):
         from inventory.selectors import list_categories
-        store = self.kwargs.get('store')
+        store = self.get_store()
         search = self.request.query_params.get('search')
         return list_categories(store=store, search=search)
 
 
-class ItemListCreateAPIView(generics.ListCreateAPIView):
+class ItemListCreateAPIView(TenancyMixin, generics.ListCreateAPIView):
     serializer_class = ItemSerializer
     pagination_class = DefaultPagination
+    permission_classes = [IsStoreMember]
 
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -32,7 +35,7 @@ class ItemListCreateAPIView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         from inventory.selectors import list_items
-        store = self.kwargs.get('store')
+        store = self.get_store()
         
         search = self.request.query_params.get('search')
         is_rentable = self.request.query_params.get('is_rentable')
@@ -55,11 +58,12 @@ class ItemListCreateAPIView(generics.ListCreateAPIView):
         )
 
 
-class ItemDetailAPIView(generics.RetrieveUpdateDestroyAPIView):
+class ItemDetailAPIView(TenancyMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ItemSerializer
+    permission_classes = [IsStoreMember]
 
     def get_queryset(self):
-        store = self.kwargs.get('store')
+        store = self.get_store()
         return Item.objects.filter(store=store)
 
     def get_serializer_class(self):
